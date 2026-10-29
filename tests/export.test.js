@@ -173,3 +173,26 @@ test("unlimited prior range keeps messages through the selected message", async 
   assert.equal(r.rows.length, 1);
   assert.match(r.report, /scroll boundary/);
 });
+
+test("export controls follow direct routes across SPA navigation", async () => {
+  const w = fixture(),
+    host = w.document.getElementById("ig-exporter"),
+    root = host.shadowRoot;
+  assert.equal(host.style.display, "contents");
+  root.getElementById("toggle").click();
+  assert.equal(root.getElementById("panel").hidden, false);
+  for (const path of ["/reels/example/", "/", "/directly"]) {
+    w.history.pushState({}, "", path);
+    w.document.body.append(w.document.createElement("span"));
+    await Promise.resolve();
+    assert.equal(host.style.display, "none");
+    assert.equal(root.getElementById("panel").hidden, true);
+  }
+  w.history.pushState({}, "", "/direct/inbox/");
+  w.dispatchEvent(new w.PopStateEvent("popstate"));
+  assert.equal(host.style.display, "contents");
+  assert.equal(
+    root.getElementById("toggle").getAttribute("aria-expanded"),
+    "false",
+  );
+});

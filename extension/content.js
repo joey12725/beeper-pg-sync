@@ -63,7 +63,7 @@
       #stop:disabled{display:none}
       output{display:block;margin-top:16px;max-height:100px;overflow:auto;color:var(--muted);font-size:11px;line-height:1.6;overflow-wrap:anywhere}
       output:empty{display:none}
-      #toggle{position:fixed;right:24px;top:24px;z-index:2147483647;display:flex;align-items:center;gap:8px;padding:10px 15px;border:1px solid var(--line);border-radius:12px;background:var(--bg);box-shadow:0 3px 16px #0001;font-size:12px;font-weight:600}
+      #toggle{position:fixed;right:168px;top:24px;z-index:2147483647;display:flex;align-items:center;gap:8px;padding:10px 15px;border:1px solid var(--line);border-radius:12px;background:var(--bg);box-shadow:0 3px 16px #0001;font-size:12px;font-weight:600}
       #toggle svg{width:16px;height:16px}
       #toggle:hover{background:var(--field)}
       @media(prefers-color-scheme:dark){aside,#toggle{--bg:#1c1c20;--ink:#f2f2f4;--muted:#9999a3;--line:#333338;--field:#27272c;--hover:#34343b}aside{box-shadow:0 16px 64px #0006}}
@@ -346,6 +346,26 @@
     $("panel").hidden = !open;
     $("toggle").setAttribute("aria-expanded", String(open));
   }
+  // Content scripts stay loaded as Instagram navigates between routes.
+  let route = null;
+  function syncRoute() {
+    if (route === location.pathname) return;
+    route = location.pathname;
+    const inDirect = /^\/direct(?:\/|$)/.test(route);
+    host.style.setProperty(
+      "display",
+      inDirect ? "contents" : "none",
+      "important",
+    );
+    if (!inDirect) setOpen(false);
+  }
+  new MutationObserver(syncRoute).observe(document.documentElement, {
+    childList: true,
+    subtree: true,
+  });
+  window.addEventListener("popstate", syncRoute);
+  window.navigation?.addEventListener("currententrychange", syncRoute);
+  syncRoute();
   $("toggle").onclick = () => setOpen($("panel").hidden);
   $("close").onclick = () => {
     setOpen(false);

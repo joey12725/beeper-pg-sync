@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Instagram Chat Exporter",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Export Instagram conversations locally as text, Markdown, CSV or a ZIP of chats.",
   "permissions": ["clipboardWrite"],
   "content_scripts": [
