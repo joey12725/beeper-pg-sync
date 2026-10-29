@@ -1,6 +1,13 @@
 /* Shared export functions; no network or storage. */
 globalThis.IGExport = (() => {
-  const columns = ["speaker", "message", "reactions", "time", "replying to"];
+  const columns = [
+    "speaker",
+    "username",
+    "message",
+    "reactions",
+    "time",
+    "replying to",
+  ];
   const cell = (v) =>
     '"' +
     String(v ?? "")
@@ -15,6 +22,20 @@ globalThis.IGExport = (() => {
         ...rows.map((r) => columns.map((k) => cell(r[k])).join(",")),
       ].join("\r\n")
     );
+  }
+  function filename(title, thread, extension) {
+    const clean = (value, max) =>
+      Array.from(
+        String(value || "")
+          .normalize("NFC")
+          .replace(/[<>:"/\\|?*\x00-\x1f\x7f]/g, "-")
+          .replace(/\s+/g, " ")
+          .trim()
+          .replace(/[. ]+$/g, ""),
+      )
+        .slice(0, max)
+        .join("");
+    return `instagram-${clean(title, 80) || "chat"}-${clean(thread, 40) || "export"}.${extension}`;
   }
   function text(rows) {
     return rows.map((r) => `${r.speaker}: ${r.message}`).join("\n");
@@ -83,5 +104,5 @@ globalThis.IGExport = (() => {
       type: "application/zip",
     });
   }
-  return { csv, text, markdown, zip };
+  return { csv, text, markdown, zip, filename };
 })();

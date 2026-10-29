@@ -91,6 +91,8 @@
     };
   let selection = null,
     rows = [],
+    exportTitle = "chat",
+    exportThread = "",
     busy = false,
     cancelled = false;
   const wait = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -104,6 +106,40 @@
     c.querySelectorAll("img").forEach((i) => i.replaceWith(i.alt || ""));
     return c.textContent.trim();
   };
+  let identityPath = "";
+  const identities = new Map();
+  function chatTitle() {
+    return (
+      [...document.querySelectorAll("h2")]
+        .filter(
+          (e) =>
+            !e.closest(
+              '[aria-label="Thread list"], [role="navigation"], [role="article"], [role="dialog"]',
+            ),
+        )
+        .map((e) => e.textContent.trim())
+        .filter(Boolean)
+        .at(-1) || "chat"
+    );
+  }
+  function learnHeaderNames() {
+    if (identityPath !== location.pathname) {
+      identities.clear();
+      identityPath = location.pathname;
+    }
+    for (const link of document.querySelectorAll(
+      'a[aria-label^="Open the profile page of "]',
+    )) {
+      const heading = link.querySelector("h2");
+      if (heading)
+        identities.set(
+          link
+            .getAttribute("aria-label")
+            .replace("Open the profile page of ", ""),
+          heading.textContent.trim(),
+        );
+    }
+  }
   function read(a) {
     const g = a.closest('[role="group"]');
     const speaker =
@@ -111,6 +147,19 @@
         ?.querySelector('[aria-label^="React to message from "]')
         ?.getAttribute("aria-label")
         .replace("React to message from ", "") || "Unknown";
+    learnHeaderNames();
+    const nameLabel = [...g.querySelectorAll('span[dir="auto"]')].find(
+      (e) =>
+        !a.contains(e) &&
+        !e.closest('[role="button"], [aria-label="Message actions"]') &&
+        e.compareDocumentPosition(a) & Node.DOCUMENT_POSITION_FOLLOWING &&
+        e.textContent.trim(),
+    );
+    const displayName = nameLabel?.textContent
+      .trim()
+      .split(/ replied to | forwarded a message/)[0];
+    if (displayName && !["You", "You replied"].includes(displayName))
+      identities.set(speaker, displayName);
     const links = [...a.querySelectorAll("a[href]")]
       .map((e) => e.href)
       .filter((h) => /^https:\/\/www.instagram.com\/(p|reel|reels)\//.test(h));
@@ -178,7 +227,8 @@
       .filter(Boolean);
     return {
       id: a.getAttribute("aria-labelledby"),
-      speaker,
+      speaker: identities.get(speaker) || speaker,
+      username: speaker === "Unknown" ? "" : "@" + speaker.replace(/^@/, ""),
       message,
       reactions: reactions.join(" "),
       time,
@@ -207,6 +257,8 @@
   }
   async function collect(mode, limit, since, anchor = selection) {
     const path = location.pathname;
+    const title = chatTitle(),
+      thread = path.match(/\/direct\/t\/([^/]+)/)?.[1] || "export";
     let initial = articles();
     if (!initial.length)
       throw Error(
@@ -281,7 +333,12 @@
     if (location.pathname !== path)
       throw Error("Conversation changed; export stopped.");
     return {
-      rows: result,
+      title,
+      thread,
+      rows: result.map((r) => ({
+        ...r,
+        speaker: identities.get(r.username.replace(/^@/, "")) || r.speaker,
+      })),
       report: `${result.length} messages; ${reason}. ${excluded} excluded with unknown dates. Completeness is not guaranteed by Instagram's UI.`,
     };
   }
@@ -422,6 +479,8 @@
           o.since,
         );
       rows = r.rows;
+      exportTitle = r.title;
+      exportThread = r.thread;
       status(r.report + " Ready to save.");
       ["copy", "md", "csv"].forEach((id) => ($(id).disabled = !rows.length));
     });
@@ -434,9 +493,17 @@
     }
   };
   $("md").onclick = () =>
-    download(IGExport.markdown(rows), "instagram-chat.md", "text/markdown");
+    download(
+      IGExport.markdown(rows),
+      IGExport.filename(exportTitle, exportThread, "md"),
+      "text/markdown",
+    );
   $("csv").onclick = () =>
-    download(IGExport.csv(rows), "instagram-chat.csv", "text/csv");
+    download(
+      IGExport.csv(rows),
+      IGExport.filename(exportTitle, exportThread, "csv"),
+      "text/csv",
+    );
   $("bulk").onclick = () =>
     run(async () => {
       const { n, since } = options(),
@@ -490,7 +557,8 @@
               seen.add(path);
               try {
                 const r = await collect("all", n, since, null);
-                const filename = `chat-${String(++number).padStart(4, "0")}.csv`;
+                const filename = IGExport.filename(r.title, r.thread, "csv");
+                number++;
                 files[filename] = IGExport.csv(r.rows);
                 reports.push(`${filename} | ${path}: ${r.report}`);
               } catch (e) {
@@ -521,5 +589,5 @@
       );
     });
   // Exposed only in the isolated content-script world for diagnostics/tests.
-  globalThis.IGExportDOM = { read, articles, collect, dateValue };
+  globalThis.IGExportDOM = { read, articles, collect, dateValue, chatTitle };
 })();

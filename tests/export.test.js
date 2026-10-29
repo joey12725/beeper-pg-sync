@@ -18,7 +18,9 @@ test("CSV preserves multiline, quotes, Unicode and defuses spreadsheet formulas"
   ]);
   assert.ok(csv.includes('"\'=1+1"'));
   assert.ok(csv.includes('"a,""b""\n🦋"'));
-  assert.ok(csv.startsWith("\ufeffspeaker,message,reactions,time,replying to"));
+  assert.ok(
+    csv.startsWith("\ufeffspeaker,username,message,reactions,time,replying to"),
+  );
 });
 test("ZIP opens with a standard independent reader including Unicode filenames", async () => {
   const path = mkdtempSync(tmpdir() + "/igzip-") + "/test.zip";
@@ -123,6 +125,7 @@ test("bulk ZIP preserves collected chats when a later folder is empty", async ()
   let files;
   w.IGExport = {
     csv: E.csv,
+    filename: E.filename,
     zip: (f) => {
       files = f;
       return new w.Blob(["zip"]);
@@ -148,7 +151,7 @@ test("bulk ZIP preserves collected chats when a later folder is empty", async ()
   root.getElementById("bulk").click();
   for (let n = 0; n < 100 && !files; n++)
     await new Promise((r) => setImmediate(r));
-  assert.ok(files["chat-0001.csv"]);
+  assert.ok(files["instagram-chat-1.csv"]);
   assert.match(files["export-report.txt"], /General: no supported chat rows/);
 });
 
@@ -194,5 +197,44 @@ test("export controls follow direct routes across SPA navigation", async () => {
   assert.equal(
     root.getElementById("toggle").getAttribute("aria-expanded"),
     "false",
+  );
+});
+
+test("group speaker names and @usernames remain separate, including reply labels", () => {
+  const w = fixture(),
+    a = w.IGExportDOM.articles()[0],
+    g = a.closest("[role=group]");
+  const label = w.document.createElement("span");
+  label.dir = "auto";
+  label.textContent = "Alice Smith replied to Bob Jones";
+  g.prepend(label);
+  const row = w.IGExportDOM.read(a);
+  assert.equal(row.speaker, "Alice Smith");
+  assert.equal(row.username, "@Alice");
+  assert.ok(E.csv([row]).includes('"Alice Smith"'));
+  w.history.pushState({}, "", "/direct/t/2/");
+  label.remove();
+  assert.equal(w.IGExportDOM.read(a).speaker, "Alice");
+});
+test("one-to-one chat headers supply names and conversation filenames", () => {
+  const w = fixture();
+  w.document.body.insertAdjacentHTML(
+    "afterbegin",
+    '<a aria-label="Open the profile page of Alice"><h2>Alice Smith</h2></a>',
+  );
+  const row = w.IGExportDOM.read(w.IGExportDOM.articles()[0]);
+  assert.equal(row.speaker, "Alice Smith");
+  assert.equal(row.username, "@Alice");
+  assert.equal(
+    E.filename(w.IGExportDOM.chatTitle(), "123", "csv"),
+    "instagram-Alice Smith-123.csv",
+  );
+  assert.notEqual(
+    E.filename("Alice Smith", "123", "csv"),
+    E.filename("Alice Smith", "456", "csv"),
+  );
+  assert.equal(
+    E.filename("A/B: C? 🎉", "123", "md"),
+    "instagram-A-B- C- 🎉-123.md",
   );
 });
