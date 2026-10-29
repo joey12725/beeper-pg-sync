@@ -17,7 +17,7 @@ Chrome requires unpacked extensions to stay in their installed folder. To update
 Open a chat, then choose a range:
 
 - **From selected message:** click **Select message**, then click a message bubble. Prepare collects that message and everything after it, scrolling automatically.
-- **Before selected message:** select a message and enter a count. The selected message counts toward N.
+- **Before selected message:** select a message and enter a count. The selected message counts toward N. Click **Unlimited** (or empty the count field) to collect all earlier messages through the selection.
 - **Entire conversation:** automatically walks to newest, then back through history. The count field does not limit this mode.
 
 Click **Prepare export**, then **Copy text**, **Markdown**, or **CSV**. Copy uses `speaker: message`, in chronological order. Markdown includes available displayed times. CSV has exactly `speaker,message,reactions,time,replying to`; quotes, newlines, emoji and spreadsheet formula protection are supported. Speaker names are Instagram usernames when available. Escape cancels message selection.
@@ -27,6 +27,8 @@ Shared posts/reels become their Instagram URL when a link is exposed in the mess
 ## Export all chats
 
 Expand **Export all chats**, set the maximum messages per chat and optionally an **Since** date, then click **Download ZIP**. It sequentially visits discoverable chat rows in Primary, General, and Requests when those tabs exist. Each CSV has a numbered filename; `export-report.txt` maps filenames (in report order) to thread paths and records coverage, failures and stopping reasons.
+
+Click **Unlimited** beside Message limit to remove the per-chat cap. Click **Clear** beside Since to remove the date filter. You can also empty either field directly.
 
 Keep the tab open and avoid clicking around during collection. **Opening chats can mark them as read.** This uses Instagram's interface, so large exports take time. Cancel stops the operation; cancellation discards the current run. A failed chat/folder is reported while other collected chats are retained. Large exports are held in browser memory until download.
 

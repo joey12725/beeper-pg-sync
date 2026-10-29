@@ -144,9 +144,32 @@ test("bulk ZIP preserves collected chats when a later folder is empty", async ()
   button.getBoundingClientRect = () => ({ height: 72 });
   nav.querySelectorAll("[role=tab]")[1].onclick = () => button.remove();
   const root = w.document.querySelector("#ig-exporter").shadowRoot;
+  root.getElementById("count").value = "";
   root.getElementById("bulk").click();
   for (let n = 0; n < 100 && !files; n++)
     await new Promise((r) => setImmediate(r));
   assert.ok(files["chat-0001.csv"]);
   assert.match(files["export-report.txt"], /General: no supported chat rows/);
+});
+
+test("message and date filters can be cleared after setting them", () => {
+  const w = fixture(),
+    root = w.document.querySelector("#ig-exporter").shadowRoot;
+  root.getElementById("count").value = "42";
+  root.getElementById("since").value = "2026-01-01";
+  root.getElementById("count-clear").click();
+  root.getElementById("since-clear").click();
+  assert.equal(root.getElementById("count").value, "");
+  assert.equal(root.getElementById("count").placeholder, "Unlimited");
+  assert.equal(root.getElementById("since").value, "");
+});
+test("unlimited prior range keeps messages through the selected message", async () => {
+  const w = scrollingFixture();
+  w.setTimeout = (fn) => queueMicrotask(fn);
+  const r = await w.IGExportDOM.collect("up", 0, "", {
+    id: "m1",
+    path: w.location.pathname,
+  });
+  assert.equal(r.rows.length, 1);
+  assert.match(r.report, /scroll boundary/);
 });
