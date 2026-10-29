@@ -1,3 +1,5 @@
+<img src="assets/logo.png" width="96" height="96" alt="Chat bubble with a download arrow">
+
 # Instagram Chat Exporter
 
 A small, local Chrome extension for keeping Instagram conversations in a useful format. Works in desktop Chrome on macOS, Windows, and Linux. No server, account registration, telemetry, or build step required to install.
