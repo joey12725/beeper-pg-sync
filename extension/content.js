@@ -4,7 +4,84 @@
   host.id = "ig-exporter";
   document.documentElement.append(host);
   const root = host.attachShadow({ mode: "open" });
-  root.innerHTML = `<style>:host{all:initial}*{box-sizing:border-box}aside{position:fixed;right:20px;top:90px;width:min(310px,calc(100vw - 40px));max-height:calc(100vh - 110px);overflow:auto;padding:20px;border:1px solid #ddd;border-radius:16px;background:#fff;color:#20202b;box-shadow:0 12px 48px #0003;font:14px system-ui;z-index:2147483647}h2{font-size:18px;margin:0 0 8px}p{color:#646470;font-size:12px;line-height:1.5}label{display:block;margin:12px 0}select,input,button{font:inherit;border:1px solid #ccc;border-radius:8px;padding:9px;width:100%;background:white;color:#20202b}button{cursor:pointer;margin-top:7px}button.primary{background:#6554df;color:white;border:0}button:disabled{opacity:.45;cursor:default}.row{display:flex;gap:8px}output{display:block;margin-top:12px;font-size:12px;white-space:pre-wrap;max-height:160px;overflow:auto}summary{cursor:pointer;font-weight:600}#toggle{font:14px system-ui;position:fixed;right:20px;top:20px;width:auto;z-index:2147483647;background:#6554df;color:white}</style><button id="toggle">Export DMs</button><aside hidden><h2>Keep the conversation</h2><p>Local exports · no uploads · no zoom needed</p><label>Range<select id="range"><option value="down">Selected message → newest</option><option value="up">N messages ending at selection</option><option value="all">Entire conversation</option></select></label><button id="pick">Choose a starting message</button><label>Message count / maximum per chat<input id="count" type="number" min="1" max="100000" value="1000"></label><label>On or after (optional)<input id="since" type="date"></label><p>Date filters exclude messages with unknown dates. Displayed block times are used without slow hover gestures.</p><button class="primary" id="collect">Prepare export</button><div class="row"><button id="copy" disabled>Copy text</button><button id="md" disabled>Markdown</button><button id="csv" disabled>CSV</button></div><details><summary>All conversations</summary><p>Visits Primary, General and Requests when available. Keep this tab open. Opening chats may mark them read. ZIP includes a report of limits and failures.</p><button id="bulk">Export all chats → ZIP</button></details><button id="stop" disabled>Cancel</button><output aria-live="polite" id="status">Open a conversation to begin.</output></aside>`;
+  const icon = (paths) =>
+    `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths}</svg>`;
+  const arrow = icon('<path d="M12 3v12m-4-4 4 4 4-4M5 15v5h14v-5"/>');
+  const copyIcon = icon(
+    '<rect x="8" y="8" width="12" height="12" rx="3"/><path d="M15 8V4H4v11h4"/>',
+  );
+  const fileIcon = icon(
+    '<path d="M14 3H6v18h12V7l-4-4Zm0 0v5h4M9 12h6m-6 4h6"/>',
+  );
+  const tableIcon = icon(
+    '<rect x="3" y="4" width="18" height="16" rx="3"/><path d="M3 10h18M10 10v10"/>',
+  );
+  root.innerHTML = `
+    <style>
+      :host{all:initial;color-scheme:light dark}
+      *,*::before,*::after{box-sizing:border-box}
+      [hidden]{display:none!important}
+      button,input,select{font:inherit}
+      button{cursor:pointer}
+      svg{width:20px;height:20px;flex-shrink:0}
+      aside,#toggle{--bg:#fff;--ink:#202124;--muted:#777980;--line:#e9e9ec;--field:#f6f6f8;--hover:#ededf0;font:13px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:var(--ink)}
+      aside{position:fixed;right:24px;top:88px;width:min(344px,calc(100vw - 32px));max-height:calc(100dvh - 108px);overflow:auto;z-index:2147483647;background:var(--bg);border:1px solid var(--line);border-radius:20px;box-shadow:0 16px 64px #0002,0 2px 8px #00000008}
+      header{display:flex;align-items:center;gap:11px;padding:22px 22px 18px}
+      .brand{display:grid;place-items:center;width:34px;height:34px;background:var(--field);border-radius:10px}
+      h2{font-size:16px;font-weight:650;letter-spacing:-.4px;margin:0;flex:1}
+      .icon-button{display:grid;place-items:center;width:30px;height:30px;padding:5px;background:none;border:0;border-radius:8px;color:var(--muted)}
+      .icon-button:hover{background:var(--field);color:var(--ink)}
+      .body{padding:0 22px 22px}
+      label{display:block;font-size:12px;font-weight:550;color:var(--muted)}
+      select,input{display:block;width:100%;min-width:0;height:44px;margin-top:8px;padding:0 12px;border:1px solid transparent;border-radius:10px;background:var(--field);color:var(--ink);font-size:13px;outline:none}
+      select{padding-right:6px}
+      input:focus,select:focus{border-color:var(--muted);background:var(--bg)}
+      button:focus-visible,summary:focus-visible{outline:2px solid #818cf8;outline-offset:3px}
+      .fields{display:grid;grid-template-columns:1fr 1.25fr;gap:12px;margin:22px 0}
+      button{transition:background .15s,color .15s,opacity .15s}
+      .selection{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;height:40px;margin-top:10px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink);font-size:12px;font-weight:550}
+      .selection svg{width:16px;height:16px;color:var(--muted)}
+      .selection:hover{background:var(--field)}
+      .primary{display:flex;align-items:center;justify-content:center;gap:9px;width:100%;height:46px;border:0;border-radius:11px;background:var(--ink);color:var(--bg);font-weight:600}
+      .primary:hover{opacity:.85}
+      .primary svg{width:17px;height:17px}
+      .formats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:12px}
+      .formats button{display:flex;flex-direction:column;align-items:center;gap:8px;padding:14px 3px 12px;border:1px solid var(--line);border-radius:11px;background:var(--bg);color:var(--ink);font-size:11px;font-weight:550}
+      .formats button:hover:enabled{background:var(--field);border-color:var(--muted)}
+      button:disabled{cursor:default;opacity:.35}
+      details{margin-top:22px;border-top:1px solid var(--line)}
+      summary{display:flex;align-items:center;gap:9px;padding:18px 0 0;cursor:pointer;list-style:none;font-size:12px;font-weight:550}
+      summary::-webkit-details-marker{display:none}
+      summary svg{width:17px;height:17px;color:var(--muted)}
+      summary::after{content:'+';margin-left:auto;color:var(--muted);font-size:18px;font-weight:400;line-height:1}
+      details[open] summary::after{content:'−'}
+      #bulk{margin-top:14px}
+      #stop{width:100%;margin-top:12px;border:0;border-radius:8px;background:var(--field);color:var(--ink);padding:9px}
+      #stop:disabled{display:none}
+      output{display:block;margin-top:16px;max-height:100px;overflow:auto;color:var(--muted);font-size:11px;line-height:1.6;overflow-wrap:anywhere}
+      output:empty{display:none}
+      #toggle{position:fixed;right:24px;top:24px;z-index:2147483647;display:flex;align-items:center;gap:8px;padding:10px 15px;border:1px solid var(--line);border-radius:12px;background:var(--bg);box-shadow:0 3px 16px #0001;font-size:12px;font-weight:600}
+      #toggle svg{width:16px;height:16px}
+      #toggle:hover{background:var(--field)}
+      @media(prefers-color-scheme:dark){aside,#toggle{--bg:#1c1c20;--ink:#f2f2f4;--muted:#9999a3;--line:#333338;--field:#27272c;--hover:#34343b}aside{box-shadow:0 16px 64px #0006}}
+      @media(prefers-reduced-motion:reduce){button{transition:none}}
+    </style>
+    <button id="toggle" aria-expanded="false" aria-controls="panel">${arrow} Export</button>
+    <aside id="panel" aria-label="Chat export" hidden>
+      <header><span class="brand">${arrow}</span><h2>Chat export</h2><button id="close" class="icon-button" aria-label="Close export panel">${icon('<path d="m6 6 12 12M6 18 18 6"/>')}</button></header>
+      <div class="body">
+        <label>Range<select id="range"><option value="down">From selected message</option><option value="up">Before selected message</option><option value="all">Entire conversation</option></select></label>
+        <button id="pick" class="selection">${icon('<circle cx="12" cy="12" r="6"/><path d="M12 2v4m0 12v4M2 12h4m12 0h4"/>')} Select message</button>
+        <div class="fields">
+          <label>Message limit<input id="count" type="number" min="1" max="100000" value="1000" aria-label="Message count or maximum per chat"></label>
+          <label>Since<input id="since" type="date" aria-label="On or after date" title="Messages with unknown dates are excluded"></label>
+        </div>
+        <button class="primary" id="collect">Prepare export ${icon('<path d="M5 12h14m-5-5 5 5-5 5"/>')}</button>
+        <div class="formats"><button id="copy" disabled>${copyIcon} Copy text</button><button id="md" disabled>${fileIcon} Markdown</button><button id="csv" disabled>${tableIcon} CSV</button></div>
+        <details><summary>${icon('<rect x="3" y="3" width="14" height="14" rx="3"/><path d="M8 21h10a3 3 0 0 0 3-3V8"/>')} Export all chats</summary><button id="bulk" class="selection" title="Opening chats may mark them read">${arrow} Download ZIP</button></details>
+        <button id="stop" disabled>Cancel export</button><output aria-live="polite" id="status"></output>
+      </div>
+    </aside>`;
   const $ = (id) => root.getElementById(id),
     status = (s) => {
       $("status").textContent = s;
@@ -241,8 +318,23 @@
       $("stop").disabled = true;
     }
   }
-  $("toggle").onclick = () => {
-    root.querySelector("aside").hidden = !root.querySelector("aside").hidden;
+  function setOpen(open) {
+    $("panel").hidden = !open;
+    $("toggle").setAttribute("aria-expanded", String(open));
+  }
+  $("toggle").onclick = () => setOpen($("panel").hidden);
+  $("close").onclick = () => {
+    setOpen(false);
+    $("toggle").focus();
+  };
+  root.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      setOpen(false);
+      $("toggle").focus();
+    }
+  });
+  $("range").onchange = () => {
+    $("pick").hidden = $("range").value === "all";
   };
   $("stop").onclick = () => {
     cancelled = true;
