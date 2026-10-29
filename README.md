@@ -8,7 +8,7 @@ A small, local Chrome extension for keeping Instagram conversations in a useful 
 2. Open `chrome://extensions`, enable **Developer mode**, then select **Load unpacked**.
 3. Choose the extracted folder containing `manifest.json`.
 4. Open or refresh [Instagram DMs](https://www.instagram.com/direct/inbox/). Sign in normally. Use Instagram in English.
-5. Click the purple **Export DMs** button. No zoom adjustment required.
+5. Click the **Export** button. No zoom adjustment required.
 
 Chrome requires unpacked extensions to stay in their installed folder. To update, replace those files and click Reload in `chrome://extensions`, then refresh Instagram.
 
@@ -16,8 +16,8 @@ Chrome requires unpacked extensions to stay in their installed folder. To update
 
 Open a chat, then choose a range:
 
-- **Selected message → newest:** click **Choose a starting message**, then click a message bubble. Prepare collects that message and everything after it, scrolling automatically.
-- **N messages ending at selection:** select a message and enter a count. The selected message counts toward N.
+- **From selected message:** click **Select message**, then click a message bubble. Prepare collects that message and everything after it, scrolling automatically.
+- **Before selected message:** select a message and enter a count. The selected message counts toward N.
 - **Entire conversation:** automatically walks to newest, then back through history. The count field does not limit this mode.
 
 Click **Prepare export**, then **Copy text**, **Markdown**, or **CSV**. Copy uses `speaker: message`, in chronological order. Markdown includes available displayed times. CSV has exactly `speaker,message,reactions,time,replying to`; quotes, newlines, emoji and spreadsheet formula protection are supported. Speaker names are Instagram usernames when available. Escape cancels message selection.
@@ -26,7 +26,7 @@ Shared posts/reels become their Instagram URL when a link is exposed in the mess
 
 ## Export all chats
 
-Expand **All conversations**, set the maximum messages per chat and optionally an **On or after** date, then click **Export all chats → ZIP**. It sequentially visits discoverable chat rows in Primary, General, and Requests when those tabs exist. Each CSV has a numbered filename; `export-report.txt` maps filenames (in report order) to thread paths and records coverage, failures and stopping reasons.
+Expand **Export all chats**, set the maximum messages per chat and optionally an **Since** date, then click **Download ZIP**. It sequentially visits discoverable chat rows in Primary, General, and Requests when those tabs exist. Each CSV has a numbered filename; `export-report.txt` maps filenames (in report order) to thread paths and records coverage, failures and stopping reasons.
 
 Keep the tab open and avoid clicking around during collection. **Opening chats can mark them as read.** This uses Instagram's interface, so large exports take time. Cancel stops the operation; cancellation discards the current run. A failed chat/folder is reported while other collected chats are retained. Large exports are held in browser memory until download.
 
