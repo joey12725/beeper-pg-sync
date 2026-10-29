@@ -37,6 +37,9 @@
       select{padding-right:6px}
       input:focus,select:focus{border-color:var(--muted);background:var(--bg)}
       button:focus-visible,summary:focus-visible{outline:2px solid #818cf8;outline-offset:3px}
+      .field-title{display:flex;align-items:center;justify-content:space-between;gap:4px;min-height:20px}
+      .clear-filter{border:0;background:none;color:var(--muted);font-size:10px;padding:2px 0;text-decoration:underline;text-underline-offset:3px}
+      .clear-filter:hover{color:var(--ink)}
       .fields{display:grid;grid-template-columns:1fr 1.25fr;gap:12px;margin:22px 0}
       button{transition:background .15s,color .15s,opacity .15s}
       .selection{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;height:40px;margin-top:10px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink);font-size:12px;font-weight:550}
@@ -73,8 +76,8 @@
         <label>Range<select id="range"><option value="down">From selected message</option><option value="up">Before selected message</option><option value="all">Entire conversation</option></select></label>
         <button id="pick" class="selection">${icon('<circle cx="12" cy="12" r="6"/><path d="M12 2v4m0 12v4M2 12h4m12 0h4"/>')} Select message</button>
         <div class="fields">
-          <label>Message limit<input id="count" type="number" min="1" max="100000" value="1000" aria-label="Message count or maximum per chat"></label>
-          <label>Since<input id="since" type="date" aria-label="On or after date" title="Messages with unknown dates are excluded"></label>
+          <label><span class="field-title">Message limit<button id="count-clear" class="clear-filter" type="button" aria-label="Disable message limit">Unlimited</button></span><input id="count" type="number" min="1" max="100000" value="1000" placeholder="Unlimited" aria-label="Message count or maximum per chat"></label>
+          <label><span class="field-title">Since<button id="since-clear" class="clear-filter" type="button" aria-label="Clear since date">Clear</button></span><input id="since" type="date" aria-label="On or after date" title="Messages with unknown dates are excluded"></label>
         </div>
         <button class="primary" id="collect">Prepare export ${icon('<path d="M5 12h14m-5-5 5 5-5 5"/>')}</button>
         <div class="formats"><button id="copy" disabled>${copyIcon} Copy text</button><button id="md" disabled>${fileIcon} Markdown</button><button id="csv" disabled>${tableIcon} CSV</button></div>
@@ -240,7 +243,7 @@
         capture(direction);
         status(`Collecting ${order.length} messages…`);
         const at = order.indexOf(anchor?.id);
-        if (direction < 0 && mode === "up" && at >= limit - 1)
+        if (direction < 0 && mode === "up" && limit && at >= limit - 1)
           return "count limit";
         if (direction < 0 && mode === "all" && limit && order.length >= limit)
           return "count limit";
@@ -264,7 +267,7 @@
     let result = order.map((id) => store.get(id));
     if (mode === "down") result = result.slice(at);
     if (mode === "up")
-      result = result.slice(Math.max(0, at - limit + 1), at + 1);
+      result = result.slice(limit ? Math.max(0, at - limit + 1) : 0, at + 1);
     if (mode === "all" && limit) result = result.slice(-limit);
     let excluded = 0;
     if (since) {
@@ -293,18 +296,26 @@
     setTimeout(() => URL.revokeObjectURL(u), 60000);
   }
   function options() {
-    const n = Number($("count").value);
-    if (!Number.isInteger(n) || n < 1 || n > 100000)
-      throw Error("Count must be 1–100000.");
+    const value = $("count").value.trim();
+    const n = value === "" ? 0 : Number(value);
+    if (value !== "" && (!Number.isInteger(n) || n < 1 || n > 100000))
+      throw Error("Count must be 1–100000, or leave it blank for unlimited.");
     return { n, since: $("since").value };
   }
   async function run(fn) {
     if (busy) return;
     busy = true;
     cancelled = false;
-    ["collect", "bulk", "pick", "range", "count", "since"].forEach(
-      (id) => ($(id).disabled = true),
-    );
+    [
+      "collect",
+      "bulk",
+      "pick",
+      "range",
+      "count",
+      "since",
+      "count-clear",
+      "since-clear",
+    ].forEach((id) => ($(id).disabled = true));
     $("stop").disabled = false;
     try {
       await fn();
@@ -312,12 +323,25 @@
       status(e.message);
     } finally {
       busy = false;
-      ["collect", "bulk", "pick", "range", "count", "since"].forEach(
-        (id) => ($(id).disabled = false),
-      );
+      [
+        "collect",
+        "bulk",
+        "pick",
+        "range",
+        "count",
+        "since",
+        "count-clear",
+        "since-clear",
+      ].forEach((id) => ($(id).disabled = false));
       $("stop").disabled = true;
     }
   }
+  $("count-clear").onclick = () => {
+    $("count").value = "";
+  };
+  $("since-clear").onclick = () => {
+    $("since").value = "";
+  };
   function setOpen(open) {
     $("panel").hidden = !open;
     $("toggle").setAttribute("aria-expanded", String(open));
