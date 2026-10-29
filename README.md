@@ -22,13 +22,13 @@ Open a chat, then choose a range:
 - **Before selected message:** select a message and enter a count. The selected message counts toward N. Click **Unlimited** (or empty the count field) to collect all earlier messages through the selection.
 - **Entire conversation:** automatically walks to newest, then back through history. The count field does not limit this mode.
 
-Click **Prepare export**, then **Copy text**, **Markdown**, or **CSV**. Copy uses `speaker: message`, in chronological order. Markdown includes available displayed times. CSV has exactly `speaker,message,reactions,time,replying to`; quotes, newlines, emoji and spreadsheet formula protection are supported. Speaker names are Instagram usernames when available. Escape cancels message selection.
+Click **Prepare export**, then **Copy text**, **Markdown**, or **CSV**. Downloads use names such as `instagram-Alice Smith-123456.csv` (or `.md`); group chats use the group name. Filenames retain Unicode, replace characters forbidden by common operating systems, and include a thread ID to distinguish chats with the same name. Copy uses `speaker: message`, in chronological order. Markdown includes available displayed times. CSV has `speaker,username,message,reactions,time,replying to`; quotes, newlines, emoji and spreadsheet formula protection are supported. The speaker column contains the display name when Instagram exposes it; username contains the @handle. If a display name is unavailable, speaker falls back to the username. Names learned from message labels are reused for other messages from that participant within the same chat. Escape cancels message selection.
 
 Shared posts/reels become their Instagram URL when a link is exposed in the message. Images become `sent an image` or `sent 4 images`. Unavailable attachments are labeled; the extension does not download image/video files or retrieve expired media.
 
 ## Export all chats
 
-Expand **Export all chats**, set the maximum messages per chat and optionally an **Since** date, then click **Download ZIP**. It sequentially visits discoverable chat rows in Primary, General, and Requests when those tabs exist. Each CSV has a numbered filename; `export-report.txt` maps filenames (in report order) to thread paths and records coverage, failures and stopping reasons.
+Expand **Export all chats**, set the maximum messages per chat and optionally an **Since** date, then click **Download ZIP**. It sequentially visits discoverable chat rows in Primary, General, and Requests when those tabs exist. Each CSV filename includes the conversation name and thread ID; `export-report.txt` maps filenames to thread paths and records coverage, failures and stopping reasons.
 
 Click **Unlimited** beside Message limit to remove the per-chat cap. Click **Clear** beside Since to remove the date filter. You can also empty either field directly.
 
