@@ -1,11 +1,11 @@
 {
   "name": "instagram-chat-exporter",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "private": true,
   "type": "module",
   "scripts": {
     "test": "node --test",
-    "check": "node --check extension/content.js && node --check extension/core.js",
+    "check": "node --check extension/content.js && node --check extension/core.js && node --check extension/native.js",
     "package": "python3 scripts/package.py"
   },
   "devDependencies": {

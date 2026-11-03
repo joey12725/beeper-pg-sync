@@ -238,3 +238,45 @@ test("one-to-one chat headers supply names and conversation filenames", () => {
     "instagram-A-B- C- 🎉-123.md",
   );
 });
+
+function addNative(w) {
+  const a = w.IGExportDOM.articles()[0];
+  a.__reactFiberTest = {memoizedProps: {outgoing: false, secret: 'must-not-export', slideMessageRef: {
+    __id: 'SlideMessage:stable-123', timestamp_ms: '1793666523123', sender_fbid: '987654321',
+    replied_to_message: {__id: 'SlideMessage:reply-1'}, session: 'must-not-export',
+  }}};
+  w.eval(readFileSync('extension/native.js','utf8'));
+  return a;
+}
+test('native bridge preserves milliseconds and exports only whitelisted message metadata', () => {
+  const w = fixture(), a = addNative(w), r = w.IGExportDOM.read(a);
+  assert.equal(r.id, 'stable-123');
+  assert.equal(r.native_id, 'stable-123');
+  assert.equal(r.timestamp_ms, '1793666523123');
+  assert.equal(Date.parse(r.time), 1793666523123);
+  assert.ok(r.time.endsWith('.123Z'));
+  assert.equal(r.time_precision, 'millisecond');
+  assert.equal(r.sender_id, '987654321');
+  assert.equal(r.reply_id, 'SlideMessage:reply-1');
+  assert.ok(!a.getAttribute('data-ig-export-native').includes('must-not-export'));
+  assert.ok(E.csv([r]).includes('1793666523123'));
+  delete a.__reactFiberTest;
+  const fallback = w.IGExportDOM.read(a);
+  assert.equal(fallback.id, 'm1');
+  assert.equal(fallback.time_precision, 'unknown');
+});
+test('selected-message ranges use the same native ID as collection', async () => {
+  const w = scrollingFixture(), a = addNative(w);
+  w.setTimeout = fn => queueMicrotask(fn);
+  w.document.querySelector('#ig-exporter').shadowRoot.getElementById('pick').click();
+  a.dispatchEvent(new w.MouseEvent('click', {bubbles:true}));
+  const result = await w.IGExportDOM.collect('up', 1, '');
+  assert.equal(result.rows.length, 1);
+  assert.equal(result.rows[0].native_id, 'stable-123');
+});
+test('manifest uses page-world metadata bridge and isolated UI without extra permissions', () => {
+  const m=JSON.parse(readFileSync('extension/manifest.json','utf8'));
+  assert.equal(m.content_scripts.find(s=>s.js.includes('native.js')).world, 'MAIN');
+  assert.notEqual(m.content_scripts.find(s=>s.js.includes('content.js')).world, 'MAIN');
+  assert.deepEqual(m.permissions, ['clipboardWrite']);
+});

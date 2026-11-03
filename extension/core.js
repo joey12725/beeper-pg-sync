@@ -7,6 +7,12 @@ globalThis.IGExport = (() => {
     "reactions",
     "time",
     "replying to",
+    "native_id",
+    "sender_id",
+    "direction",
+    "reply_id",
+    "timestamp_ms",
+    "time_precision",
   ];
   const cell = (v) =>
     '"' +

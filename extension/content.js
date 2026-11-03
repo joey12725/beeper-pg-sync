@@ -225,13 +225,20 @@
       )
       .map(textWithEmoji)
       .filter(Boolean);
+    const native = nativeMessage(a);
     return {
-      id: a.getAttribute("aria-labelledby"),
+      id: native.native_id || a.getAttribute("aria-labelledby"),
+      native_id: native.native_id || "",
+      sender_id: native.sender_id || "",
+      direction: native.direction || "",
+      reply_id: native.reply_id || "",
+      timestamp_ms: native.timestamp_ms || "",
+      time_precision: native.time ? "millisecond" : time ? "displayed_label" : "unknown",
       speaker: identities.get(speaker) || speaker,
       username: speaker === "Unknown" ? "" : "@" + speaker.replace(/^@/, ""),
       message,
       reactions: reactions.join(" "),
-      time,
+      time: native.time || time,
       "replying to": replies.join("\n"),
     };
   }
@@ -244,6 +251,15 @@
         return p;
     throw Error("Cannot locate Instagram scroll area.");
   };
+  function nativeMessage(a) {
+    document.dispatchEvent(new Event("ig-export-native-refresh"));
+    try {
+      const m = JSON.parse(a.getAttribute("data-ig-export-native") || "null");
+      if (typeof m?.native_id !== "string" || !m.native_id || !/^\d{13}$/.test(m.timestamp_ms) || new Date(Number(m.timestamp_ms)).toISOString() !== m.time) return {};
+      return { native_id: m.native_id, time: m.time, timestamp_ms: m.timestamp_ms,
+        sender_id: m.sender_id, direction: m.direction, reply_id: m.reply_id };
+    } catch { return {}; }
+  }
   function dateValue(t) {
     if (!t) return NaN;
     const now = new Date();
@@ -449,7 +465,7 @@
       e.preventDefault();
       e.stopImmediatePropagation();
       selection = {
-        id: a.getAttribute("aria-labelledby"),
+        id: read(a).id,
         path: location.pathname,
       };
       status("Selected: " + read(a).message.slice(0, 100));
