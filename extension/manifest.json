@@ -1,30 +1,27 @@
 {
   "manifest_version": 3,
   "name": "Instagram Chat Exporter",
-  "version": "1.0.6",
-  "description": "Export Instagram conversations locally as text, Markdown, CSV or a ZIP of chats.",
-  "permissions": [
-    "clipboardWrite"
-  ],
+  "version": "2.0.0",
+  "description": "Export Instagram DMs as text, Markdown, CSV or ZIP, or sync them into Postgres with beeper-pg-sync.",
+  "permissions": ["clipboardWrite", "storage"],
+  "host_permissions": ["http://127.0.0.1/*", "http://localhost/*"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": false
+  },
   "content_scripts": [
     {
-      "matches": [
-        "https://www.instagram.com/*"
-      ],
-      "js": [
-        "native.js"
-      ],
+      "matches": ["https://www.instagram.com/*"],
+      "js": ["native.js"],
       "run_at": "document_idle",
       "world": "MAIN"
     },
     {
-      "matches": [
-        "https://www.instagram.com/*"
-      ],
-      "js": [
-        "core.js",
-        "content.js"
-      ],
+      "matches": ["https://www.instagram.com/*"],
+      "js": ["core.js", "content.js"],
       "run_at": "document_idle"
     }
   ],

@@ -16,6 +16,9 @@
   const tableIcon = icon(
     '<rect x="3" y="4" width="18" height="16" rx="3"/><path d="M3 10h18M10 10v10"/>',
   );
+  const syncIcon = icon(
+    '<ellipse cx="12" cy="6" rx="7" ry="3"/><path d="M5 6v6c0 1.7 3.1 3 7 3s7-1.3 7-3V6M5 12v6c0 1.7 3.1 3 7 3s7-1.3 7-3v-6"/>',
+  );
   root.innerHTML = `
     <style>
       :host{all:initial;color-scheme:light dark}
@@ -48,7 +51,7 @@
       .primary{display:flex;align-items:center;justify-content:center;gap:9px;width:100%;height:46px;border:0;border-radius:11px;background:var(--ink);color:var(--bg);font-weight:600}
       .primary:hover{opacity:.85}
       .primary svg{width:17px;height:17px}
-      .formats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:12px}
+      .formats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:12px}
       .formats button{display:flex;flex-direction:column;align-items:center;gap:8px;padding:14px 3px 12px;border:1px solid var(--line);border-radius:11px;background:var(--bg);color:var(--ink);font-size:11px;font-weight:550}
       .formats button:hover:enabled{background:var(--field);border-color:var(--muted)}
       button:disabled{cursor:default;opacity:.35}
@@ -59,6 +62,8 @@
       summary::after{content:'+';margin-left:auto;color:var(--muted);font-size:18px;font-weight:400;line-height:1}
       details[open] summary::after{content:'−'}
       #bulk{margin-top:14px}
+      .check{display:flex;align-items:center;gap:8px;margin-top:12px;font-weight:500}
+      .check input{width:16px;height:16px;margin:0;accent-color:var(--ink)}
       #stop{width:100%;margin-top:12px;border:0;border-radius:8px;background:var(--field);color:var(--ink);padding:9px}
       #stop:disabled{display:none}
       output{display:block;margin-top:16px;max-height:100px;overflow:auto;color:var(--muted);font-size:11px;line-height:1.6;overflow-wrap:anywhere}
@@ -80,8 +85,8 @@
           <label><span class="field-title">Since<button id="since-clear" class="clear-filter" type="button" aria-label="Clear since date">Clear</button></span><input id="since" type="date" aria-label="On or after date" title="Messages with unknown dates are excluded"></label>
         </div>
         <button class="primary" id="collect">Prepare export ${icon('<path d="M5 12h14m-5-5 5 5-5 5"/>')}</button>
-        <div class="formats"><button id="copy" disabled>${copyIcon} Copy text</button><button id="md" disabled>${fileIcon} Markdown</button><button id="csv" disabled>${tableIcon} CSV</button></div>
-        <details><summary>${icon('<rect x="3" y="3" width="14" height="14" rx="3"/><path d="M8 21h10a3 3 0 0 0 3-3V8"/>')} Export all chats</summary><button id="bulk" class="selection" title="Opening chats may mark them read">${arrow} Download ZIP</button></details>
+        <div class="formats"><button id="copy" disabled>${copyIcon} Copy</button><button id="md" disabled>${fileIcon} Markdown</button><button id="csv" disabled>${tableIcon} CSV</button><button id="send" disabled title="Send to your beeper-pg-sync server">${syncIcon} Sync</button></div>
+        <details><summary>${icon('<rect x="3" y="3" width="14" height="14" rx="3"/><path d="M8 21h10a3 3 0 0 0 3-3V8"/>')} Export all chats</summary><button id="bulk" class="selection" title="Opening chats may mark them read">${arrow} Download ZIP</button><label class="check"><input id="bulk-send" type="checkbox"> Also send each chat to the sync server</label></details>
         <button id="stop" disabled>Cancel export</button><output aria-live="polite" id="status"></output>
       </div>
     </aside>`;
@@ -233,7 +238,11 @@
       direction: native.direction || "",
       reply_id: native.reply_id || "",
       timestamp_ms: native.timestamp_ms || "",
-      time_precision: native.time ? "millisecond" : time ? "displayed_label" : "unknown",
+      time_precision: native.time
+        ? "millisecond"
+        : time
+          ? "displayed_label"
+          : "unknown",
       speaker: identities.get(speaker) || speaker,
       username: speaker === "Unknown" ? "" : "@" + speaker.replace(/^@/, ""),
       message,
@@ -255,10 +264,24 @@
     document.dispatchEvent(new Event("ig-export-native-refresh"));
     try {
       const m = JSON.parse(a.getAttribute("data-ig-export-native") || "null");
-      if (typeof m?.native_id !== "string" || !m.native_id || !/^\d{13}$/.test(m.timestamp_ms) || new Date(Number(m.timestamp_ms)).toISOString() !== m.time) return {};
-      return { native_id: m.native_id, time: m.time, timestamp_ms: m.timestamp_ms,
-        sender_id: m.sender_id, direction: m.direction, reply_id: m.reply_id };
-    } catch { return {}; }
+      if (
+        typeof m?.native_id !== "string" ||
+        !m.native_id ||
+        !/^\d{13}$/.test(m.timestamp_ms) ||
+        new Date(Number(m.timestamp_ms)).toISOString() !== m.time
+      )
+        return {};
+      return {
+        native_id: m.native_id,
+        time: m.time,
+        timestamp_ms: m.timestamp_ms,
+        sender_id: m.sender_id,
+        direction: m.direction,
+        reply_id: m.reply_id,
+      };
+    } catch {
+      return {};
+    }
   }
   function dateValue(t) {
     if (!t) return NaN;
@@ -368,6 +391,29 @@
     a.click();
     setTimeout(() => URL.revokeObjectURL(u), 60000);
   }
+  // The background worker owns the server URL and token (extension options).
+  function syncPayload(r) {
+    return IGExport.payload(
+      r.rows,
+      {
+        thread: r.thread,
+        title: r.title,
+        url: location.origin + "/direct/t/" + r.thread + "/",
+      },
+      dateValue,
+    );
+  }
+  async function sendToSync(payloads) {
+    if (!globalThis.chrome?.runtime?.sendMessage)
+      throw Error("Sync is available when the extension is installed.");
+    const reply = await chrome.runtime.sendMessage({
+      type: "sync:ingest",
+      payloads,
+    });
+    if (!reply?.ok)
+      throw Error(reply?.error || "The sync server did not answer.");
+    return reply.result;
+  }
   function options() {
     const value = $("count").value.trim();
     const n = value === "" ? 0 : Number(value);
@@ -388,6 +434,7 @@
       "since",
       "count-clear",
       "since-clear",
+      "bulk-send",
     ].forEach((id) => ($(id).disabled = true));
     $("stop").disabled = false;
     try {
@@ -405,6 +452,7 @@
         "since",
         "count-clear",
         "since-clear",
+        "bulk-send",
       ].forEach((id) => ($(id).disabled = false));
       $("stop").disabled = true;
     }
@@ -487,7 +535,7 @@
   $("collect").onclick = () =>
     run(async () => {
       rows = [];
-      ["copy", "md", "csv"].forEach((id) => ($(id).disabled = true));
+      ["copy", "md", "csv", "send"].forEach((id) => ($(id).disabled = true));
       const o = options(),
         r = await collect(
           $("range").value,
@@ -498,7 +546,9 @@
       exportTitle = r.title;
       exportThread = r.thread;
       status(r.report + " Ready to save.");
-      ["copy", "md", "csv"].forEach((id) => ($(id).disabled = !rows.length));
+      ["copy", "md", "csv", "send"].forEach(
+        (id) => ($(id).disabled = !rows.length),
+      );
     });
   $("copy").onclick = async () => {
     try {
@@ -520,6 +570,14 @@
       IGExport.filename(exportTitle, exportThread, "csv"),
       "text/csv",
     );
+  $("send").onclick = () =>
+    run(async () => {
+      status("Sending to the sync server…");
+      const result = await sendToSync([
+        syncPayload({ rows, thread: exportThread, title: exportTitle }),
+      ]);
+      status(`Synced ${rows.length} messages; ${result.added} new.`);
+    });
   $("bulk").onclick = () =>
     run(async () => {
       const { n, since } = options(),
@@ -577,6 +635,14 @@
                 number++;
                 files[filename] = IGExport.csv(r.rows);
                 reports.push(`${filename} | ${path}: ${r.report}`);
+                if ($("bulk-send").checked) {
+                  try {
+                    const sent = await sendToSync([syncPayload(r)]);
+                    reports.push(`${filename}: synced, ${sent.added} new`);
+                  } catch (e) {
+                    reports.push(`${filename}: SYNC FAILED ${e.message}`);
+                  }
+                }
               } catch (e) {
                 if (cancelled) throw e;
                 reports.push(`${path}: FAILED ${e.message}`);

@@ -1,4 +1,5 @@
 /* Shared export functions; no network or storage. */
+/* Payload format understood by the beeper-pg-sync ingest server. */
 globalThis.IGExport = (() => {
   const columns = [
     "speaker",
@@ -110,5 +111,21 @@ globalThis.IGExport = (() => {
       type: "application/zip",
     });
   }
-  return { csv, text, markdown, zip, filename };
+  // `approxTime(label)` turns a displayed label into epoch ms (local time) or NaN.
+  function payload(rows, { thread, title, url }, approxTime = () => NaN) {
+    return {
+      format: "beeper-pg-sync/instagram@1",
+      thread_id: String(thread || ""),
+      title: title || "",
+      url: url || "",
+      collected_at: new Date().toISOString(),
+      messages: rows.map((r) => {
+        const ms = r.timestamp_ms ? NaN : approxTime(r.time);
+        return Number.isFinite(ms)
+          ? { ...r, approx_time: new Date(ms).toISOString() }
+          : { ...r };
+      }),
+    };
+  }
+  return { csv, text, markdown, zip, filename, payload };
 })();

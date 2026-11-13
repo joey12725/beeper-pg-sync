@@ -1,14 +1,17 @@
 {
-  "name": "instagram-chat-exporter",
-  "version": "1.0.6",
+  "name": "beeper-pg-sync-extension",
+  "version": "2.0.0",
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --test",
-    "check": "node --check extension/content.js && node --check extension/core.js && node --check extension/native.js",
+    "test": "node --test tests/extension/*.test.js",
+    "check": "for f in extension/*.js; do node --check \"$f\" || exit 1; done",
+    "lint": "prettier --check extension tests/extension && npm run check",
+    "format": "prettier --write extension tests/extension",
     "package": "python3 scripts/package.py"
   },
   "devDependencies": {
-    "jsdom": "^26.0.0"
+    "jsdom": "^26.0.0",
+    "prettier": "^3.3.3"
   }
 }
