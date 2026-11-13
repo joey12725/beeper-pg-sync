@@ -1,0 +1,34 @@
+[project]
+name = "beeper-pg-sync"
+version = "2.0.0"
+description = "Sync every Beeper chat, plus Instagram DMs from a Chrome extension, into one Postgres database."
+readme = "README.md"
+license = "MIT"
+authors = [{ name = "Joey Hersh" }]
+requires-python = ">=3.11"
+dependencies = ["psycopg[binary]>=3.2"]
+keywords = ["beeper", "postgres", "instagram", "messages", "chat-archive"]
+
+[project.scripts]
+beeper-pg-sync = "beeper_pg_sync.cli:main"
+
+[dependency-groups]
+dev = ["pytest>=8", "ruff>=0.6"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/beeper_pg_sync"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests/sync"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "N"]
