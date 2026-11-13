@@ -108,7 +108,9 @@ class Client:
 
     def __init__(self, base_url: str = DEFAULT_URL, token: str | None = None, timeout: float = 60):
         if not token:
-            raise BeeperAuthError("Set BEEPER_ACCESS_TOKEN (Beeper Desktop -> Settings -> Integrations -> Approved connections)")
+            raise BeeperAuthError(
+                "Set BEEPER_ACCESS_TOKEN (Beeper Desktop -> Settings -> Integrations -> Approved connections)"
+            )
         self.base_url = base_url.rstrip("/")
         self.token = token
         self.timeout = timeout
