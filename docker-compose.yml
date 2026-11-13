@@ -1,0 +1,41 @@
+# Postgres for beeper-pg-sync. The pgvector image is plain Postgres 17 with the
+# vector extension available, so embedding layers can be added without a new image.
+#
+#   docker compose up -d db                     # just the database
+#   docker compose --profile daemon up -d       # database + sync daemon + ingest server
+services:
+  db:
+    image: pgvector/pgvector:pg17
+    environment:
+      POSTGRES_USER: sync
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-sync}
+      POSTGRES_DB: messages
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sync -d messages"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  sync:
+    build: .
+    profiles: [daemon]
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://sync:${POSTGRES_PASSWORD:-sync}@db:5432/messages
+      BEEPER_URL: ${BEEPER_URL:-http://host.docker.internal:23373}
+      INGEST_HOST: 0.0.0.0
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "127.0.0.1:8765:8765"
+    restart: unless-stopped
+
+volumes:
+  pgdata:
